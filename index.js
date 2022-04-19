@@ -72,9 +72,44 @@ app.listen(PORT, () => {
 app.use("/reports", serveIndex(REPORTS_DIR));
 app.use("/reports", express.static(REPORTS_DIR));
 
+app.get("/summary", async (req, res) => {
+  fs.readFile("simpleCrashDB.json", "utf8", async (err, data) => {
+    var htmlGen = "";
+    const simpleCrashDB = JSON.parse(data);
+    simpleCrashDB.forEach((report) => {
+      htmlGen += `<tr>
+      <td>${report.crashID}</td>
+      <td>${report.crcVersion}</td>
+      <td>${report.buildConfig}</td>
+      <td>${report.engineVersion}</td>
+      <td>${report.crashType}</td>
+      <td>${report.errorMsg}</td>
+      <td><a href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
+      <td><a>pending</a></td>
+      </tr>`;
+    });
+    fs.readFile("html/summary.html", "utf8", async (err, data) => {
+      const html = data.replace("{HTML_GEN}", htmlGen);
+      res.send(html);
+    });
+  });
+});
+
 setInterval(() => {
   extractCrashReports(); // Periodical extraction
 }, 1000 * 60 * 10); // Every 10 mins
+
+setInterval(() => {
+  // https://stackoverflow.com/a/53721345
+  const exec = require("child_process").exec;
+  exec("node reportProcessor.js", (err, stdout, stderr) => {
+    process.stdout.write(`${stdout}`);
+    // process.stdout.write(`${stderr}`);
+    if (err !== null) {
+      console.log(`exec error: ${err}`);
+    }
+  });
+}, 1000 * 60 * 30); // Every 30 mins
 
 const getDateTimeString = () => {
   // https://stackoverflow.com/a/30272803
