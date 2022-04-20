@@ -1,6 +1,7 @@
 const fs = require("fs");
 
 const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
+const DATABASE_DIR = process.env.DATABASE_DIR || "./db";
 
 console.log(`(!) Starting report processing...`);
 
@@ -35,6 +36,9 @@ crashReportDirs.forEach((crashReportDir) => {
 });
 // console.log(simpleCrashDB);
 // https://stackoverflow.com/a/56904201
-fs.writeFileSync("simpleCrashDB.json", JSON.stringify(simpleCrashDB));
+fs.writeFileSync(
+  `${DATABASE_DIR}/simpleCrashDB.json`,
+  JSON.stringify(simpleCrashDB, null, "\t")
+);
 
 console.log("(✔) Report processing complete.");

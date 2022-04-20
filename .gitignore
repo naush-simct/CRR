@@ -1,5 +1,9 @@
 node_modules
 reports/*
-!reports/.gitignore
+!reports/.gitkeep
 uploads/*
-!uploads/.gitignore
+!uploads/.gitkeep
+uploadsPDB/*
+!uploadsPDB/.gitkeep
+db/*
+!db/.gitkeep
