@@ -3,7 +3,7 @@ const fs = require("fs");
 const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
 const DATABASE_DIR = process.env.DATABASE_DIR || "./db";
 
-console.log(`(!) Starting report processing...`);
+console.log(`(!) Starting report processing [NEW THREAD]...`);
 
 const crashReportDirs = fs
   .readdirSync(REPORTS_DIR, { withFileTypes: true })

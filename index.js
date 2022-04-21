@@ -22,11 +22,19 @@ if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR);
 if (!fs.existsSync(UPLOAD_PDB_DIR)) fs.mkdirSync(UPLOAD_PDB_DIR);
 if (!fs.existsSync(DATABASE_DIR)) fs.mkdirSync(DATABASE_DIR);
 
+app.listen(PORT, () => {
+  console.log("(+) Crash Report System started.");
+  extractCrashReports(); // Run extraction now
+  processCrashReports(); // Run processing now
+});
+
 app.get("/", (req, res) => {
-  res.status(200).send("CRR ready.");
+  res.status(200).send("CRS ready.");
 });
 
 var immediateSched = false; // Makes sure immediate scheduling doesn't get repetitive for quick consecutive requests
+
+//////// RECEIVING
 
 app.post("/upload", async (req, res) => {
   const buffers = [];
@@ -67,43 +75,6 @@ app.post("/upload", async (req, res) => {
           }
         }
       );
-    }
-  );
-});
-
-app.listen(PORT, () => {
-  console.log("(+) Crash Report Receiver started.");
-  extractCrashReports(); // Run extraction now
-  processCrashReports(); // Run processing now
-});
-
-// Serve extracted reports as an index for now
-app.use("/reports", serveIndex(REPORTS_DIR));
-app.use("/reports", express.static(REPORTS_DIR));
-
-app.get("/summary", async (req, res) => {
-  fs.readFile(
-    `${DATABASE_DIR}/simpleCrashDB.json`,
-    "utf8",
-    async (err, data) => {
-      var htmlGen = "";
-      const simpleCrashDB = JSON.parse(data);
-      simpleCrashDB.forEach((report) => {
-        htmlGen += `<tr>
-      <td>${report.crashID}</td>
-      <td>${report.crcVersion}</td>
-      <td>${report.buildConfig}</td>
-      <td>${report.engineVersion}</td>
-      <td>${report.crashType}</td>
-      <td>${report.errorMsg}</td>
-      <td><a href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
-      <td><a>pending</a></td>
-      </tr>`;
-      });
-      fs.readFile("html/summary.html", "utf8", async (err, data) => {
-        const html = data.replace("{HTML_GEN}", htmlGen);
-        res.send(html);
-      });
     }
   );
 });
@@ -165,6 +136,39 @@ app.get("/check-PDB-Hash", (req, res) => {
     (exists) => {
       if (exists) res.send("1");
       else res.send("0");
+    }
+  );
+});
+
+//////// PRESENTATION
+
+// Serve extracted reports as an index for now
+app.use("/reports", serveIndex(REPORTS_DIR));
+app.use("/reports", express.static(REPORTS_DIR));
+
+app.get("/summary", async (req, res) => {
+  fs.readFile(
+    `${DATABASE_DIR}/simpleCrashDB.json`,
+    "utf8",
+    async (err, data) => {
+      var htmlGen = "";
+      const simpleCrashDB = JSON.parse(data);
+      simpleCrashDB.forEach((report) => {
+        htmlGen += `<tr>
+      <td>${report.crashID}</td>
+      <td>${report.crcVersion}</td>
+      <td>${report.buildConfig}</td>
+      <td>${report.engineVersion}</td>
+      <td>${report.crashType}</td>
+      <td>${report.errorMsg}</td>
+      <td><a href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
+      <td><a>pending</a></td>
+      </tr>`;
+      });
+      fs.readFile("html/summary.html", "utf8", async (err, data) => {
+        const html = data.replace("{HTML_GEN}", htmlGen);
+        res.send(html);
+      });
     }
   );
 });

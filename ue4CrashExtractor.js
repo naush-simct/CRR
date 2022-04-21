@@ -6,7 +6,7 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
 
 exports.extractCrashReports = async () => {
-  console.log(`(!) Starting ASYNC crash report extraction...`);
+  console.log(`(!) Starting crash report extraction [ASYNC]...`);
 
   fs.readdir(UPLOAD_DIR, async (err, crashFiles) => {
     crashFiles = crashFiles.filter((crashFile) => {
