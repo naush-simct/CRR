@@ -35,14 +35,40 @@
       border-bottom: 2px solid #bf8222;
     }
     .styled-btn {
-      background-color: #b4986b;
-      color: white;
+      background-color: #daccb5;
+      color: #4b6794;
       padding: 1px 3px;
       text-decoration: none;
       border-radius: 10px;
     }
     .styled-btn:hover {
-      background-color: #8b7249;
+      background-color: #c9b494;
+    }
+    /* https://dev.to/jordanfinners/creating-a-collapsible-section-with-nothing-but-html-4ip9 */
+    details {
+      /* user-select: none; */
+      color: #4b6794;
+      background-color: #ede7dc;
+      border-radius: 10px;
+      padding: 1px;
+    }
+    details > summary span.icon {
+      transition: all 0.3s;
+    }
+    details[open] summary span.icon {
+      transform: rotate(180deg);
+    }
+    summary {
+      display: flex;
+      cursor: pointer;
+      background-color: #daccb5;
+      border-radius: 10px;
+    }
+    summary:hover {
+      background-color: #c9b494;
+    }
+    summary::-webkit-details-marker {
+      display: none;
     }
   </style>
   <body>

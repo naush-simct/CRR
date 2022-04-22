@@ -162,9 +162,14 @@ app.get("/summary", async (req, res) => {
       <td>${report.buildConfig}</td>
       <td>${report.engineVersion}</td>
       <td>${report.crashType}</td>
-      <td>${report.errorMsg}</td>
+      <td>${report.errorMsg}
+        <details>
+          <summary>Call Stack<span class="icon">▼</span></summary>
+          <p>${report.callStack}</p>
+        </details>
+      </td>
       <td><a class="styled-btn" href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
-      <td>${report.crashPDB.description}<br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
+      <td>${report.crashPDB.description},<br><br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
       </tr>`;
       });
       fs.readFile("html/summary.html", "utf8", async (err, data) => {

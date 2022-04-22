@@ -55,6 +55,7 @@ crashReportDirs.forEach((crashReportDir) => {
     engineVersion: context.RuntimeProperties.EngineVersion._text,
     crashType: context.RuntimeProperties.CrashType._text,
     errorMsg: context.RuntimeProperties.ErrorMessage._text,
+    callStack: context.RuntimeProperties.CallStack._text,
     crashReportDir: `${crashReportDir}`,
     crashPDB: getPDB(
       context.RuntimeProperties.CrashGUID._text,
