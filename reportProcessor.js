@@ -15,13 +15,17 @@ if (!crashReportDirs.length) console.log(`(!) Nothing left to process.`);
 
 // Read QA PDB
 var simplePDBDB = {};
-const PDBList = fs.readFileSync(`${DATABASE_DIR}/simplePDBDB.txt`, "utf-8");
-PDBList.split(/\r?\n/).forEach((line) => {
-  if (line) {
-    tokens = line.split(",");
-    simplePDBDB[tokens[0]] = tokens[1];
-  }
-});
+// Check if PDBDB exists first
+if (fs.existsSync(`${DATABASE_DIR}/simplePDBDB.txt`)) {
+  const PDBList = fs.readFileSync(`${DATABASE_DIR}/simplePDBDB.txt`, "utf-8");
+  PDBList.split(/\r?\n/).forEach((line) => {
+    if (line) {
+      tokens = line.split(",");
+      simplePDBDB[tokens[0]] = tokens[1];
+    }
+  });
+}
+
 const getPDB = (crashGUID, crcVersion) => {
   retObj = {};
   if (simplePDBDB[crashGUID]) {
