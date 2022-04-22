@@ -1,6 +1,7 @@
 const fs = require("fs");
 
 const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
+const UPLOAD_PDB_DIR = process.env.UPLOAD_PDB_DIR || "./uploadsPDB";
 const DATABASE_DIR = process.env.DATABASE_DIR || "./db";
 
 console.log(`(!) Starting report processing [NEW THREAD]...`);
@@ -12,7 +13,31 @@ const crashReportDirs = fs
 
 if (!crashReportDirs.length) console.log(`(!) Nothing left to process.`);
 
-simpleCrashDB = [];
+// Read QA PDB
+var simplePDBDB = {};
+const PDBList = fs.readFileSync(`${DATABASE_DIR}/simplePDBDB.txt`, "utf-8");
+PDBList.split(/\r?\n/).forEach((line) => {
+  if (line) {
+    tokens = line.split(",");
+    simplePDBDB[tokens[0]] = tokens[1];
+  }
+});
+const getPDB = (crashGUID, crcVersion) => {
+  retObj = {};
+  if (simplePDBDB[crashGUID]) {
+    retObj["url"] = `uploadsPDB/${simplePDBDB[crashGUID]}`;
+    retObj["description"] = `QA Builds`;
+    retObj["source"] = `${simplePDBDB[crashGUID]}`;
+    return retObj;
+  } else {
+    retObj["url"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\${crcVersion}`;
+    retObj["description"] = `SimCT Symbol Server`;
+    retObj["source"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\${crcVersion}`;
+    return retObj;
+  }
+};
+
+var simpleCrashDB = [];
 
 crashReportDirs.forEach((crashReportDir) => {
   // Store necessary information in database.
@@ -24,13 +49,17 @@ crashReportDirs.forEach((crashReportDir) => {
   const contextJSON = convert.xml2json(contextXML, { compact: true });
   const context = JSON.parse(contextJSON).FGenericCrashContext;
   const crashMetadata = {
-    crashID: context.RuntimeProperties.CrashGUID._text,
+    crashGUID: context.RuntimeProperties.CrashGUID._text,
     crcVersion: context.RuntimeProperties.CrashReportClientVersion._text,
     buildConfig: context.RuntimeProperties.BuildConfiguration._text,
     engineVersion: context.RuntimeProperties.EngineVersion._text,
     crashType: context.RuntimeProperties.CrashType._text,
     errorMsg: context.RuntimeProperties.ErrorMessage._text,
     crashReportDir: `${crashReportDir}`,
+    crashPDB: getPDB(
+      context.RuntimeProperties.CrashGUID._text,
+      context.RuntimeProperties.CrashReportClientVersion._text
+    ),
   };
   simpleCrashDB.push(crashMetadata);
 });

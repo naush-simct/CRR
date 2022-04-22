@@ -99,7 +99,7 @@ app.post(
           // Store (CrashGUID,PDBHash) pair in simplePDBDB.txt
           fs.appendFile(
             `${DATABASE_DIR}/simplePDBDB.txt`,
-            `\n${req.body.crashGUID},${req.body.PDBHash}`,
+            `\n${req.body.crashGUID},${req.body.PDBHash}.zip`,
             (err) => {
               if (err) {
                 console.log("ERROR: " + err);
@@ -114,7 +114,7 @@ app.post(
       // No file was sent, this means MiddleMan knows that we already have the PDB with exact hash
       fs.appendFile(
         `${DATABASE_DIR}/simplePDBDB.txt`,
-        `\n${req.body.crashGUID},${req.body.PDBHash}`,
+        `\n${req.body.crashGUID},${req.body.PDBHash}.zip`,
         (err) => {
           if (err) {
             res.status(500).send("PDB Upload failed.");
@@ -145,6 +145,8 @@ app.get("/check-PDB-Hash", (req, res) => {
 // Serve extracted reports as an index for now
 app.use("/reports", serveIndex(REPORTS_DIR));
 app.use("/reports", express.static(REPORTS_DIR));
+// Serve PDBs
+app.use("/uploadsPDB", express.static(UPLOAD_PDB_DIR));
 
 app.get("/summary", async (req, res) => {
   fs.readFile(
@@ -155,14 +157,14 @@ app.get("/summary", async (req, res) => {
       const simpleCrashDB = JSON.parse(data);
       simpleCrashDB.forEach((report) => {
         htmlGen += `<tr>
-      <td>${report.crashID}</td>
+      <td>${report.crashGUID}</td>
       <td>${report.crcVersion}</td>
       <td>${report.buildConfig}</td>
       <td>${report.engineVersion}</td>
       <td>${report.crashType}</td>
       <td>${report.errorMsg}</td>
-      <td><a href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
-      <td><a>pending</a></td>
+      <td><a class="styled-btn" href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
+      <td>${report.crashPDB.description}<br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
       </tr>`;
       });
       fs.readFile("html/summary.html", "utf8", async (err, data) => {
@@ -173,9 +175,9 @@ app.get("/summary", async (req, res) => {
   );
 });
 
-// setInterval(() => {
-//   extractCrashReports(); // Periodical extraction
-// }, 1000 * 60 * 10); // Every 10 mins
+setInterval(() => {
+  processCrashReports(); // Periodical processing
+}, 1000 * 60 * 10); // Every 10 mins
 
 const processCrashReports = () => {
   // https://stackoverflow.com/a/53721345
