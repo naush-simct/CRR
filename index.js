@@ -106,6 +106,9 @@ app.post(
                 return;
               }
               console.log("(✔) PDB DB updated.");
+              setTimeout(() => {
+                processCrashReports(); // Schedule processing
+              }, 3000);
             }
           );
         }
@@ -123,6 +126,9 @@ app.post(
           }
           res.status(200).send("PDB upload successful.");
           console.log("(✔) PDB DB updated.");
+          setTimeout(() => {
+            processCrashReports(); // Schedule processing
+          }, 3000);
         }
       );
     }
@@ -180,9 +186,9 @@ app.get("/summary", async (req, res) => {
   );
 });
 
-setInterval(() => {
-  processCrashReports(); // Periodical processing
-}, 1000 * 60 * 10); // Every 10 mins
+// setInterval(() => {
+//   processCrashReports(); // Periodical processing
+// }, 1000 * 60 * 10); // Every 10 mins
 
 const processCrashReports = () => {
   // https://stackoverflow.com/a/53721345
