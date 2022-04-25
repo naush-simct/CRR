@@ -5,7 +5,8 @@ const crypto = require("crypto");
 var serveIndex = require("serve-index");
 const { extractCrashReports } = require("./ue4CrashExtractor");
 
-const PORT = process.env.PORT || 8080;
+const PUBLIC_PORT = process.env.PUBLIC_PORT || 8080;
+const INTERNAL_PORT = process.env.INTERNAL_PORT || 8081;
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
 const UPLOAD_PDB_DIR = process.env.UPLOAD_PDB_DIR || "./uploadsPDB";
@@ -14,22 +15,20 @@ const DATABASE_DIR = process.env.DATABASE_DIR || "./db";
 const multer = require("multer");
 const upload = multer({ dest: UPLOAD_PDB_DIR });
 
-const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const public_app = express();
+public_app.use(express.json());
+public_app.use(express.urlencoded({ extended: true }));
 
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR);
 if (!fs.existsSync(UPLOAD_PDB_DIR)) fs.mkdirSync(UPLOAD_PDB_DIR);
 if (!fs.existsSync(DATABASE_DIR)) fs.mkdirSync(DATABASE_DIR);
 
-app.listen(PORT, () => {
-  console.log("(+) Crash Report System started.");
-  extractCrashReports(); // Run extraction now
-  processCrashReports(); // Run processing now
+public_app.listen(PUBLIC_PORT, () => {
+  console.log("(+) Crash Report System [PUBLIC] started.");
 });
 
-app.get("/", (req, res) => {
+public_app.get("/", (req, res) => {
   res.status(200).send("CRS ready.");
 });
 
@@ -37,7 +36,7 @@ var immediateSched = false; // Makes sure immediate scheduling doesn't get repet
 
 //////// RECEIVING
 
-app.post("/upload", async (req, res) => {
+public_app.post("/upload", async (req, res) => {
   const buffers = [];
   for await (const chunk of req) {
     buffers.push(chunk);
@@ -80,7 +79,7 @@ app.post("/upload", async (req, res) => {
   );
 });
 
-app.post(
+public_app.post(
   "/upload-QA-PDB",
   upload.array("upload[]", 1),
   async (req, res, next) => {
@@ -136,7 +135,7 @@ app.post(
   }
 );
 
-app.get("/check-PDB-Hash", (req, res) => {
+public_app.get("/check-PDB-Hash", (req, res) => {
   let checkFileExists = (s) =>
     new Promise((r) => fs.access(s, fs.constants.F_OK, (e) => r(!e)));
   checkFileExists(`${UPLOAD_PDB_DIR}/${req.query.PDBHash}.zip`).then(
@@ -147,15 +146,25 @@ app.get("/check-PDB-Hash", (req, res) => {
   );
 });
 
+const internal_app = express();
+internal_app.use(express.json());
+internal_app.use(express.urlencoded({ extended: true }));
+
+internal_app.listen(INTERNAL_PORT, () => {
+  console.log("(+) Crash Report System [INTERNAL] started.");
+  extractCrashReports(); // Run extraction now
+  processCrashReports(); // Run processing now
+});
+
 //////// PRESENTATION
 
 // Serve extracted reports as an index for now
-app.use("/reports", serveIndex(REPORTS_DIR));
-app.use("/reports", express.static(REPORTS_DIR));
+internal_app.use("/reports", serveIndex(REPORTS_DIR));
+internal_app.use("/reports", express.static(REPORTS_DIR));
 // Serve PDBs
-app.use("/uploadsPDB", express.static(UPLOAD_PDB_DIR));
+internal_app.use("/uploadsPDB", express.static(UPLOAD_PDB_DIR));
 
-app.get("/summary", async (req, res) => {
+internal_app.get("/summary", async (req, res) => {
   fs.readFile(
     `${DATABASE_DIR}/simpleCrashDB.json`,
     "utf8",
