@@ -7,3 +7,5 @@ uploadsPDB/*
 !uploadsPDB/.gitkeep
 db/*
 !db/.gitkeep
+log/*
+!log/.gitkeep
