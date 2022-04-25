@@ -160,6 +160,12 @@ app.get("/summary", async (req, res) => {
     `${DATABASE_DIR}/simpleCrashDB.json`,
     "utf8",
     async (err, data) => {
+      if (err)
+      {
+        res.status(500).send("Something went wrong.\nPlease refresh this page in a few mins.");
+        processCrashReports();
+        return;
+      }
       var htmlGen = "";
       const simpleCrashDB = JSON.parse(data);
       simpleCrashDB.forEach((report) => {
