@@ -215,7 +215,7 @@ const processCrashReports = () => {
   // https://stackoverflow.com/a/53721345
   const exec = require("child_process").exec;
   exec("node reportProcessor.js", (err, stdout, stderr) => {
-    process.stdout.write(`${stdout}`);
+    console.log(`${stdout}`);
     // process.stdout.write(`${stderr}`);
     if (err !== null) {
       console.log(`exec error: ${err}`);
