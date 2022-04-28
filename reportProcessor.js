@@ -21,7 +21,9 @@ if (fs.existsSync(`${DATABASE_DIR}/simplePDBDB.txt`)) {
   PDBList.split(/\r?\n/).forEach((line) => {
     if (line) {
       tokens = line.split(",");
-      simplePDBDB[tokens[0]] = tokens[1];
+      simplePDBDB[tokens[0]] = {};
+      simplePDBDB[tokens[0]]["PDBZip"] = tokens[1];
+      simplePDBDB[tokens[0]]["username"] = tokens[2];
     }
   });
 }
@@ -29,9 +31,9 @@ if (fs.existsSync(`${DATABASE_DIR}/simplePDBDB.txt`)) {
 const getPDB = (crashGUID, crcVersion) => {
   retObj = {};
   if (simplePDBDB[crashGUID]) {
-    retObj["url"] = `uploadsPDB/${simplePDBDB[crashGUID]}`;
-    retObj["description"] = `QA Builds`;
-    retObj["source"] = `${simplePDBDB[crashGUID]}`;
+    retObj["url"] = `uploadsPDB/${simplePDBDB[crashGUID].PDBZip}`;
+    retObj["description"] = `QA Build [${simplePDBDB[crashGUID].username}]`;
+    retObj["source"] = `${simplePDBDB[crashGUID].PDBZip}`;
     return retObj;
   } else {
     retObj["url"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\${crcVersion}`;

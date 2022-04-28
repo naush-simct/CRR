@@ -67,7 +67,9 @@ public_app.post("/upload", async (req, res) => {
             if (!immediateSched) {
               setTimeout(() => {
                 extractCrashReports(); // Schedule extraction
-                processCrashReports(); // Schedule processing
+                setTimeout(() => {
+                  processCrashReports(); // Schedule processing
+                }, 10000);
                 immediateSched = false;
               }, 3000);
               immediateSched = true;
@@ -99,7 +101,7 @@ public_app.post(
           // Store (CrashGUID,PDBHash) pair in simplePDBDB.txt
           fs.appendFile(
             `${DATABASE_DIR}/simplePDBDB.txt`,
-            `\n${req.body.crashGUID},${req.body.PDBHash}.zip`,
+            `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
             (err) => {
               if (err) {
                 console.log("ERROR: " + err);
@@ -117,7 +119,7 @@ public_app.post(
       // No file was sent, this means MiddleMan knows that we already have the PDB with exact hash
       fs.appendFile(
         `${DATABASE_DIR}/simplePDBDB.txt`,
-        `\n${req.body.crashGUID},${req.body.PDBHash}.zip`,
+        `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
         (err) => {
           if (err) {
             res.status(500).send("PDB Upload failed.");
@@ -169,9 +171,12 @@ internal_app.get("/summary", async (req, res) => {
     `${DATABASE_DIR}/simpleCrashDB.json`,
     "utf8",
     async (err, data) => {
-      if (err)
-      {
-        res.status(500).send("Something went wrong.\nPlease refresh this page in a few mins.");
+      if (err) {
+        res
+          .status(500)
+          .send(
+            "Something went wrong.\nPlease refresh this page in a few mins."
+          );
         processCrashReports();
         return;
       }
