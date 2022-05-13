@@ -36,9 +36,9 @@ const getPDB = (crashGUID, crcVersion) => {
     retObj["source"] = `${simplePDBDB[crashGUID].PDBZip}`;
     return retObj;
   } else {
-    retObj["url"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\${crcVersion}`;
+    retObj["url"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\`;
     retObj["description"] = `SimCT Symbol Server`;
-    retObj["source"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\${crcVersion}`;
+    retObj["source"] = `\\\\192.168.1.8\\Symbols\\SAF-TAC\\`;
     return retObj;
   }
 };
