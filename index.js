@@ -14,7 +14,15 @@ const DATABASE_DIR = `${DATA_DIR}/db`;
 const LOGGING_DIR = `${DATA_DIR}/log`;
 const COLLECT_ONLY = process.env.COLLECT_ONLY || 0; // Is the system setup only for collection?
 
-DIR_LIST = [UPLOAD_DIR, UPLOAD_PDB_DIR, REPORTS_DIR, DATABASE_DIR, LOGGING_DIR];
+const DIR_COLLECT = [UPLOAD_DIR, LOGGING_DIR]; // Directories needed for collection only
+const DIR_FULL = [
+  UPLOAD_DIR,
+  LOGGING_DIR,
+  UPLOAD_PDB_DIR,
+  REPORTS_DIR,
+  DATABASE_DIR,
+]; // Directories needed for full CRS
+const DIR_LIST = COLLECT_ONLY == 1 ? DIR_COLLECT : DIR_FULL;
 for (const DIR_ITEM of DIR_LIST) {
   // Create directories if they do not exist.
   if (!fs.existsSync(DIR_ITEM)) fs.mkdirSync(DIR_ITEM);
@@ -23,7 +31,8 @@ for (const DIR_ITEM of DIR_LIST) {
 require("./js/logging"); // Start logging before anything else!
 
 const multer = require("multer");
-const upload = multer({ dest: UPLOAD_PDB_DIR });
+var upload;
+if (COLLECT_ONLY == 0) upload = multer({ dest: UPLOAD_PDB_DIR }); // Multer creates a destination directory if it doesn't exist, we don't need this DIR in client deployment.
 
 const public_app = express();
 public_app.use(express.json());
@@ -89,7 +98,7 @@ public_app.post("/upload", async (req, res) => {
 
 if (COLLECT_ONLY == 1) {
   // Is the system setup only for collection?
-  // DOWNLOAD COLLECTED REPORTS AS A ZIP
+  // TODO: DOWNLOAD COLLECTED REPORTS AS A ZIP
 } else {
   public_app.post(
     "/upload-QA-PDB",
