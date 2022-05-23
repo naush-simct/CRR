@@ -1,0 +1,17 @@
+version: '3.4'
+
+services:
+  crash-report-system:
+    image: crash-report-system
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/data
+      - COLLECT_ONLY=1 # Change this to 0 for full CRS functionality
+    volumes:
+      - ./CRS_DATA:/data
+    ports:
+      - 8080:8080
+      - 8081:8081
