@@ -1,4 +1,3 @@
-require("./logging"); // Start logging before anything else!
 const express = require("express");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -7,10 +6,21 @@ const { extractCrashReports } = require("./ue4CrashExtractor");
 
 const PUBLIC_PORT = process.env.PUBLIC_PORT || 8080;
 const INTERNAL_PORT = process.env.INTERNAL_PORT || 8081;
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
-const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
-const UPLOAD_PDB_DIR = process.env.UPLOAD_PDB_DIR || "./uploadsPDB";
-const DATABASE_DIR = process.env.DATABASE_DIR || "./db";
+const DATA_DIR = process.env.DATA_DIR || "./data";
+const UPLOAD_DIR = `${DATA_DIR}/uploads`;
+const REPORTS_DIR = `${DATA_DIR}/reports`;
+const UPLOAD_PDB_DIR = `${DATA_DIR}/uploadsPDB`;
+const DATABASE_DIR = `${DATA_DIR}/db`;
+const LOGGING_DIR = `${DATA_DIR}/log`;
+const COLLECT_ONLY = process.env.COLLECT_ONLY || 0; // Is the system setup only for collection?
+
+DIR_LIST = [UPLOAD_DIR, UPLOAD_PDB_DIR, REPORTS_DIR, DATABASE_DIR, LOGGING_DIR];
+for (const DIR_ITEM of DIR_LIST) {
+  // Create directories if they do not exist.
+  if (!fs.existsSync(DIR_ITEM)) fs.mkdirSync(DIR_ITEM);
+}
+
+require("./logging"); // Start logging before anything else!
 
 const multer = require("multer");
 const upload = multer({ dest: UPLOAD_PDB_DIR });
@@ -18,11 +28,6 @@ const upload = multer({ dest: UPLOAD_PDB_DIR });
 const public_app = express();
 public_app.use(express.json());
 public_app.use(express.urlencoded({ extended: true }));
-
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
-if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR);
-if (!fs.existsSync(UPLOAD_PDB_DIR)) fs.mkdirSync(UPLOAD_PDB_DIR);
-if (!fs.existsSync(DATABASE_DIR)) fs.mkdirSync(DATABASE_DIR);
 
 public_app.listen(PUBLIC_PORT, () => {
   console.log("(+) Crash Report System [PUBLIC] started.");
@@ -64,7 +69,8 @@ public_app.post("/upload", async (req, res) => {
             console.log("(✔) Received a crash file.");
             res.status(201).send("Report uploaded.");
 
-            if (!immediateSched) {
+            // Do not extract if we are running only for collection!
+            if (COLLECT_ONLY == 0 && !immediateSched) {
               setTimeout(() => {
                 extractCrashReports(); // Schedule extraction
                 setTimeout(() => {
@@ -81,135 +87,136 @@ public_app.post("/upload", async (req, res) => {
   );
 });
 
-public_app.post(
-  "/upload-QA-PDB",
-  upload.array("upload[]", 1),
-  async (req, res, next) => {
-    if (req.files.length) {
-      const pdb = req.files[0];
-      fs.rename(
-        `${pdb.destination}/${pdb.filename}`,
-        `${pdb.destination}/${req.body.PDBHash}.zip`,
-        (err) => {
-          if (err) {
-            res.status(500).send("PDB Upload failed.");
-            console.log("ERROR: " + err);
-            return;
-          }
-          res.status(200).send("PDB upload successful.");
-          console.log(`(✔) Received PDB from QA for '${req.body.crashGUID}'`);
-          // Store (CrashGUID,PDBHash) pair in simplePDBDB.txt
-          fs.appendFile(
-            `${DATABASE_DIR}/simplePDBDB.txt`,
-            `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
-            (err) => {
-              if (err) {
-                console.log("ERROR: " + err);
-                return;
-              }
-              console.log("(✔) PDB DB updated.");
-              setTimeout(() => {
-                processCrashReports(); // Schedule processing
-              }, 3000);
+if (COLLECT_ONLY == 1) {
+  // Is the system setup only for collection?
+  // DOWNLOAD COLLECTED REPORTS AS A ZIP
+} else {
+  public_app.post(
+    "/upload-QA-PDB",
+    upload.array("upload[]", 1),
+    async (req, res, next) => {
+      if (req.files.length) {
+        const pdb = req.files[0];
+        fs.rename(
+          `${pdb.destination}/${pdb.filename}`,
+          `${pdb.destination}/${req.body.PDBHash}.zip`,
+          (err) => {
+            if (err) {
+              res.status(500).send("PDB Upload failed.");
+              console.log("ERROR: " + err);
+              return;
             }
-          );
-        }
-      );
-    } else {
-      // No file was sent, this means MiddleMan knows that we already have the PDB with exact hash
-      fs.appendFile(
-        `${DATABASE_DIR}/simplePDBDB.txt`,
-        `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
-        (err) => {
-          if (err) {
-            res.status(500).send("PDB Upload failed.");
-            console.log("ERROR: " + err);
-            return;
+            res.status(200).send("PDB upload successful.");
+            console.log(`(✔) Received PDB from QA for '${req.body.crashGUID}'`);
+            // Store (CrashGUID,PDBHash) pair in simplePDBDB.txt
+            fs.appendFile(
+              `${DATABASE_DIR}/simplePDBDB.txt`,
+              `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
+              (err) => {
+                if (err) {
+                  console.log("ERROR: " + err);
+                  return;
+                }
+                console.log("(✔) PDB DB updated.");
+                setTimeout(() => {
+                  processCrashReports(); // Schedule processing
+                }, 3000);
+              }
+            );
           }
-          res.status(200).send("PDB upload successful.");
-          console.log("(✔) PDB DB updated.");
-          setTimeout(() => {
-            processCrashReports(); // Schedule processing
-          }, 3000);
-        }
-      );
-    }
-  }
-);
-
-public_app.get("/check-PDB-Hash", (req, res) => {
-  let checkFileExists = (s) =>
-    new Promise((r) => fs.access(s, fs.constants.F_OK, (e) => r(!e)));
-  checkFileExists(`${UPLOAD_PDB_DIR}/${req.query.PDBHash}.zip`).then(
-    (exists) => {
-      if (exists) res.send("1");
-      else res.send("0");
-    }
-  );
-});
-
-const internal_app = express();
-internal_app.use(express.json());
-internal_app.use(express.urlencoded({ extended: true }));
-
-internal_app.listen(INTERNAL_PORT, () => {
-  console.log("(+) Crash Report System [INTERNAL] started.");
-  extractCrashReports(); // Run extraction now
-  processCrashReports(); // Run processing now
-});
-
-//////// PRESENTATION
-
-// Serve extracted reports as an index for now
-internal_app.use("/reports", serveIndex(REPORTS_DIR));
-internal_app.use("/reports", express.static(REPORTS_DIR));
-// Serve PDBs
-internal_app.use("/uploadsPDB", express.static(UPLOAD_PDB_DIR));
-
-internal_app.get("/summary", async (req, res) => {
-  fs.readFile(
-    `${DATABASE_DIR}/simpleCrashDB.json`,
-    "utf8",
-    async (err, data) => {
-      if (err) {
-        res
-          .status(500)
-          .send(
-            "Something went wrong.\nPlease refresh this page in a few mins."
-          );
-        processCrashReports();
-        return;
+        );
+      } else {
+        // No file was sent, this means MiddleMan knows that we already have the PDB with exact hash
+        fs.appendFile(
+          `${DATABASE_DIR}/simplePDBDB.txt`,
+          `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
+          (err) => {
+            if (err) {
+              res.status(500).send("PDB Upload failed.");
+              console.log("ERROR: " + err);
+              return;
+            }
+            res.status(200).send("PDB upload successful.");
+            console.log("(✔) PDB DB updated.");
+            setTimeout(() => {
+              processCrashReports(); // Schedule processing
+            }, 3000);
+          }
+        );
       }
-      var htmlGen = "";
-      const simpleCrashDB = JSON.parse(data);
-      simpleCrashDB.forEach((report) => {
-        htmlGen += `<tr>
-      <td>${report.crashGUID}</td>
-      <td>${report.crcVersion}</td>
-      <td>${report.buildConfig}</td>
-      <td>${report.engineVersion}</td>
-      <td>${report.crashType}</td>
-      <td>${report.errorMsg}
-        <details>
-          <summary>Call Stack<span class="icon">▼</span></summary>
-          <p>${report.callStack}</p>
-        </details>
-      </td>
-      <td><a class="styled-btn" href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
-      <td>${report.crashPDB.description},<br><br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
-      </tr>`;
-      });
-      fs.readFile("html/summary.html", "utf8", async (err, data) => {
-        const html = data.replace("{HTML_GEN}", htmlGen);
-        res.send(html);
-      });
     }
   );
-});
 
-// setInterval(() => {
-//   processCrashReports(); // Periodical processing
-// }, 1000 * 60 * 10); // Every 10 mins
+  public_app.get("/check-PDB-Hash", (req, res) => {
+    let checkFileExists = (s) =>
+      new Promise((r) => fs.access(s, fs.constants.F_OK, (e) => r(!e)));
+    checkFileExists(`${UPLOAD_PDB_DIR}/${req.query.PDBHash}.zip`).then(
+      (exists) => {
+        if (exists) res.send("1");
+        else res.send("0");
+      }
+    );
+  });
+
+  const internal_app = express();
+  internal_app.use(express.json());
+  internal_app.use(express.urlencoded({ extended: true }));
+
+  internal_app.listen(INTERNAL_PORT, () => {
+    console.log("(+) Crash Report System [INTERNAL] started.");
+    extractCrashReports(); // Run extraction now
+    processCrashReports(); // Run processing now
+  });
+
+  //////// PRESENTATION
+
+  // Serve extracted reports as an index for now
+  internal_app.use("/reports", serveIndex(REPORTS_DIR));
+  internal_app.use("/reports", express.static(REPORTS_DIR));
+  // Serve PDBs
+  internal_app.use("/uploadsPDB", express.static(UPLOAD_PDB_DIR));
+
+  internal_app.get("/summary", async (req, res) => {
+    fs.readFile(
+      `${DATABASE_DIR}/simpleCrashDB.json`,
+      "utf8",
+      async (err, data) => {
+        if (err) {
+          res
+            .status(500)
+            .send(
+              "Something went wrong.\nPlease refresh this page in a few mins."
+            );
+          processCrashReports();
+          return;
+        }
+        var htmlGen = "";
+        const simpleCrashDB = JSON.parse(data);
+        simpleCrashDB.forEach((report) => {
+          htmlGen += `<tr>
+        <td>${report.crashGUID}</td>
+        <td>${report.crcVersion}</td>
+        <td>${report.buildConfig}</td>
+        <td>${report.engineVersion}</td>
+        <td>${report.crashType}</td>
+        <td>${report.errorMsg}
+          <details>
+            <summary>Call Stack<span class="icon">▼</span></summary>
+            <p>${report.callStack}</p>
+          </details>
+        </td>
+        <td><a class="styled-btn" href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
+        <td>${report.crashPDB.description},<br><br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
+        </tr>`;
+        });
+        fs.readFile("html/summary.html", "utf8", async (err, data) => {
+          const html = data.replace("{HTML_GEN}", htmlGen);
+          res.send(html);
+        });
+      }
+    );
+  });
+}
 
 const processCrashReports = () => {
   // https://stackoverflow.com/a/53721345

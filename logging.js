@@ -4,6 +4,9 @@
 const fs = require("fs");
 const util = require("util");
 
+const DATA_DIR = process.env.DATA_DIR || "./data";
+const LOGGING_DIR = `${DATA_DIR}/log`;
+
 console.log = (d) => {
   var todayEPOCH = new Date()
     .toISOString()
@@ -11,7 +14,9 @@ console.log = (d) => {
       /^(?<year>\d+)-(?<month>\d+)-(?<day>\d+)T.*$/,
       "$<year>_$<month>_$<day>"
     );
-  var log_file = fs.createWriteStream(`log/${todayEPOCH}.log`, { flags: "a" });
+  var log_file = fs.createWriteStream(`${LOGGING_DIR}/${todayEPOCH}.log`, {
+    flags: "a",
+  });
   var log_stdout = process.stdout;
   var logLine = util.format(d).replace(/\n+$/, ""); // https://stackoverflow.com/a/24874813
   log_file.write(new Date().toISOString() + ": " + logLine + "\n");

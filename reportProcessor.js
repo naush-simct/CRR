@@ -1,8 +1,8 @@
 const fs = require("fs");
 
-const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
-const UPLOAD_PDB_DIR = process.env.UPLOAD_PDB_DIR || "./uploadsPDB";
-const DATABASE_DIR = process.env.DATABASE_DIR || "./db";
+const DATA_DIR = process.env.DATA_DIR || "./data";
+const REPORTS_DIR = `${DATA_DIR}/reports`;
+const DATABASE_DIR = `${DATA_DIR}/db`;
 
 console.log(`(!) Starting report processing [NEW THREAD]...`);
 

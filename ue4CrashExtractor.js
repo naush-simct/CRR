@@ -2,8 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
-const REPORTS_DIR = process.env.REPORTS_DIR || "./reports";
+const DATA_DIR = process.env.DATA_DIR || "./data";
+const UPLOAD_DIR = `${DATA_DIR}/uploads`;
+const REPORTS_DIR = `${DATA_DIR}/reports`;
 
 exports.extractCrashReports = async () => {
   console.log(`(!) Starting crash report extraction [ASYNC]...`);
