@@ -1,11 +1,14 @@
-# Deployment
+# SAF-TAC Crash Report System
 
-git clone https://github.com/naush-simct/CRR.git --depth=1
+## Deployment
 
-sudo apt install nodejs
-sudo apt install npm
-npm install forever -g
+Use Docker,
 
-cd CRR
-npm i
-forever start index.js
+    docker compose up
+
+OR
+
+After installing Node.js (with npm) in your system,
+
+    npm i
+    node .
