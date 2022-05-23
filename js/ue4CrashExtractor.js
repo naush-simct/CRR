@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const DATA_DIR = process.env.DATA_DIR || "./data";
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 const UPLOAD_DIR = `${DATA_DIR}/uploads`;
 const REPORTS_DIR = `${DATA_DIR}/reports`;
 

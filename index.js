@@ -2,7 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const crypto = require("crypto");
 var serveIndex = require("serve-index");
-const { extractCrashReports } = require("./ue4CrashExtractor");
+const { extractCrashReports } = require("./js/ue4CrashExtractor");
 
 const PUBLIC_PORT = process.env.PUBLIC_PORT || 8080;
 const INTERNAL_PORT = process.env.INTERNAL_PORT || 8081;
@@ -20,7 +20,7 @@ for (const DIR_ITEM of DIR_LIST) {
   if (!fs.existsSync(DIR_ITEM)) fs.mkdirSync(DIR_ITEM);
 }
 
-require("./logging"); // Start logging before anything else!
+require("./js/logging"); // Start logging before anything else!
 
 const multer = require("multer");
 const upload = multer({ dest: UPLOAD_PDB_DIR });
@@ -187,6 +187,7 @@ if (COLLECT_ONLY == 1) {
             .send(
               "Something went wrong.\nPlease refresh this page in a few mins."
             );
+          console.log(`(!) Error accessing /summary; regenerating SimpleDB...`);
           processCrashReports();
           return;
         }
@@ -221,7 +222,7 @@ if (COLLECT_ONLY == 1) {
 const processCrashReports = () => {
   // https://stackoverflow.com/a/53721345
   const exec = require("child_process").exec;
-  exec("node reportProcessor.js", (err, stdout, stderr) => {
+  exec("node js/reportProcessor.js", (err, stdout, stderr) => {
     console.log(`${stdout}`);
     // process.stdout.write(`${stderr}`);
     if (err !== null) {

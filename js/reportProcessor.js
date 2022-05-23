@@ -1,6 +1,7 @@
 const fs = require("fs");
+const path = require("path");
 
-const DATA_DIR = process.env.DATA_DIR || "./data";
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 const REPORTS_DIR = `${DATA_DIR}/reports`;
 const DATABASE_DIR = `${DATA_DIR}/db`;
 
