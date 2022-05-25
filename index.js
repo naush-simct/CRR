@@ -231,7 +231,7 @@ if (COLLECT_ONLY == 1) {
 const processCrashReports = () => {
   // https://stackoverflow.com/a/53721345
   const exec = require("child_process").exec;
-  exec("node js/reportProcessor.js", (err, stdout, stderr) => {
+  exec("node ./js/reportProcessor.js", (err, stdout, stderr) => {
     console.log(`${stdout}`);
     // process.stdout.write(`${stderr}`);
     if (err !== null) {
