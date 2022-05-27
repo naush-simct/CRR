@@ -192,8 +192,8 @@ if (COLLECT_ONLY == 1) {
       .toArray();
     var htmlGen = "";
     simpleCrashDB.forEach((report) => {
-      htmlGen += `<tr>
-    <td>${report.crashGUID}</td>
+      htmlGen += `<tr id="${report.crashGUID}">
+    <td><a href="#${report.crashGUID}">🔗</a> ${report.crashGUID}</td>
     <td>${report.crcVersion}</td>
     <td>${report.buildConfig}</td>
     <td>${report.engineVersion}</td>
