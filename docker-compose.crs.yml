@@ -1,0 +1,28 @@
+version: '3.4'
+
+services:
+  mongodb:
+    container_name: mongodb
+    image : mongo:5.0
+    restart: always
+    command: mongod --quiet --logpath /dev/null 
+    volumes:
+    - ./CRS_DATA/mongodb:/data/db
+  crash-report-system:
+    container_name: crash-report-system
+    image: crash-report-system
+    restart: always
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/data
+      - COLLECT_ONLY=0
+    volumes:
+      - ./CRS_DATA:/data
+    ports:
+      - 8080:8080
+      - 8081:8081
+    depends_on:
+      - mongodb

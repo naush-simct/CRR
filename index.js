@@ -10,18 +10,11 @@ const DATA_DIR = process.env.DATA_DIR || "./data";
 const UPLOAD_DIR = `${DATA_DIR}/uploads`;
 const REPORTS_DIR = `${DATA_DIR}/reports`;
 const UPLOAD_PDB_DIR = `${DATA_DIR}/uploadsPDB`;
-const DATABASE_DIR = `${DATA_DIR}/db`;
 const LOGGING_DIR = `${DATA_DIR}/log`;
 const COLLECT_ONLY = process.env.COLLECT_ONLY || 0; // Is the system setup only for collection?
 
 const DIR_COLLECT = [UPLOAD_DIR, LOGGING_DIR]; // Directories needed for collection only
-const DIR_FULL = [
-  UPLOAD_DIR,
-  LOGGING_DIR,
-  UPLOAD_PDB_DIR,
-  REPORTS_DIR,
-  DATABASE_DIR,
-]; // Directories needed for full CRS
+const DIR_FULL = [UPLOAD_DIR, LOGGING_DIR, UPLOAD_PDB_DIR, REPORTS_DIR]; // Directories needed for full CRS
 const DIR_LIST = COLLECT_ONLY == 1 ? DIR_COLLECT : DIR_FULL;
 for (const DIR_ITEM of DIR_LIST) {
   // Create directories if they do not exist.
@@ -29,6 +22,9 @@ for (const DIR_ITEM of DIR_LIST) {
 }
 
 require("./js/logging"); // Start logging before anything else!
+
+var mongo;
+if (COLLECT_ONLY == 0) mongo = require("./js/mongodb");
 
 const multer = require("multer");
 var upload;
@@ -117,11 +113,14 @@ if (COLLECT_ONLY == 1) {
             }
             res.status(200).send("PDB upload successful.");
             console.log(`(✔) Received PDB from QA for '${req.body.crashGUID}'`);
-            // Store (CrashGUID,PDBHash) pair in simplePDBDB.txt
-            fs.appendFile(
-              `${DATABASE_DIR}/simplePDBDB.txt`,
-              `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
-              (err) => {
+            // Store (CrashGUID,PDBHash) pair in PDB collection
+            mongo.db.collection("PDBCollection").insertOne(
+              {
+                GUID: req.body.crashGUID,
+                PDBZip: `${req.body.PDBHash}.zip`,
+                username: req.body.username,
+              },
+              (err, result) => {
                 if (err) {
                   console.log("ERROR: " + err);
                   return;
@@ -136,10 +135,13 @@ if (COLLECT_ONLY == 1) {
         );
       } else {
         // No file was sent, this means MiddleMan knows that we already have the PDB with exact hash
-        fs.appendFile(
-          `${DATABASE_DIR}/simplePDBDB.txt`,
-          `\n${req.body.crashGUID},${req.body.PDBHash}.zip,${req.body.username}`,
-          (err) => {
+        mongo.db.collection("PDBCollection").insertOne(
+          {
+            GUID: req.body.crashGUID,
+            PDBZip: `${req.body.PDBHash}.zip`,
+            username: req.body.username,
+          },
+          (err, result) => {
             if (err) {
               res.status(500).send("PDB Upload failed.");
               console.log("ERROR: " + err);
@@ -157,14 +159,12 @@ if (COLLECT_ONLY == 1) {
   );
 
   public_app.get("/check-PDB-Hash", (req, res) => {
-    let checkFileExists = (s) =>
-      new Promise((r) => fs.access(s, fs.constants.F_OK, (e) => r(!e)));
-    checkFileExists(`${UPLOAD_PDB_DIR}/${req.query.PDBHash}.zip`).then(
-      (exists) => {
-        if (exists) res.send("1");
+    mongo.db
+      .collection("PDBCollection")
+      .findOne({ PDBZip: `${req.query.PDBHash}.zip` }, (err, result) => {
+        if (result) res.send("1");
         else res.send("0");
-      }
-    );
+      });
   });
 
   const internal_app = express();
@@ -186,58 +186,42 @@ if (COLLECT_ONLY == 1) {
   internal_app.use("/uploadsPDB", express.static(UPLOAD_PDB_DIR));
 
   internal_app.get("/summary", async (req, res) => {
-    fs.readFile(
-      `${DATABASE_DIR}/simpleCrashDB.json`,
-      "utf8",
-      async (err, data) => {
-        if (err) {
-          res
-            .status(500)
-            .send(
-              "Something went wrong.\nPlease refresh this page in a few mins."
-            );
-          console.log(`(!) Error accessing /summary; regenerating SimpleDB...`);
-          processCrashReports();
-          return;
-        }
-        var htmlGen = "";
-        const simpleCrashDB = JSON.parse(data);
-        simpleCrashDB.forEach((report) => {
-          htmlGen += `<tr>
-        <td>${report.crashGUID}</td>
-        <td>${report.crcVersion}</td>
-        <td>${report.buildConfig}</td>
-        <td>${report.engineVersion}</td>
-        <td>${report.crashType}</td>
-        <td>${report.errorMsg}
-          <details>
-            <summary>Call Stack<span class="icon">▼</span></summary>
-            <p>${report.callStack}</p>
-          </details>
-        </td>
-        <td><a class="styled-btn" href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
-        <td>${report.crashPDB.description},<br><br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
-        </tr>`;
-        });
-        fs.readFile("html/summary.html", "utf8", async (err, data) => {
-          const html = data.replace("{HTML_GEN}", htmlGen);
-          res.send(html);
-        });
-      }
-    );
+    const simpleCrashDB = await mongo.db
+      .collection("CrashCollection")
+      .find()
+      .toArray();
+    var htmlGen = "";
+    simpleCrashDB.forEach((report) => {
+      htmlGen += `<tr>
+    <td>${report.crashGUID}</td>
+    <td>${report.crcVersion}</td>
+    <td>${report.buildConfig}</td>
+    <td>${report.engineVersion}</td>
+    <td>${report.crashType}</td>
+    <td>${report.errorMsg}
+      <details>
+        <summary>Call Stack<span class="icon">▼</span></summary>
+        <p>${report.callStack}</p>
+      </details>
+    </td>
+    <td><a class="styled-btn" href="../reports/${report.crashReportDir}" target="_blank">${report.crashReportDir}</a></td>
+    <td>${report.crashPDB.description},<br><br><a class="styled-btn" href="${report.crashPDB.url}">${report.crashPDB.source}</a></td>
+    </tr>`;
+    });
+    fs.readFile("html/summary.html", "utf8", async (err, data) => {
+      const html = data.replace("{HTML_GEN}", htmlGen);
+      res.send(html);
+    });
   });
 }
 
 const processCrashReports = () => {
-  // https://stackoverflow.com/a/53721345
-  const exec = require("child_process").exec;
-  exec("node ./js/reportProcessor.js", (err, stdout, stderr) => {
-    console.log(`${stdout}`);
-    // process.stdout.write(`${stderr}`);
-    if (err !== null) {
-      console.log(`exec error: ${err}`);
-    }
+  const { fork } = require("child_process");
+  const child = fork("./js/reportProcessor.js");
+  child.on("message", (message) => {
+    console.log(`FORK_PID[${child.pid}]: ${message}`);
   });
+  child.send("START");
 };
 
 const getDateTimeString = () => {

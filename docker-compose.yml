@@ -1,15 +1,17 @@
 version: '3.4'
 
 services:
-  crash-report-system:
-    image: crash-report-system
+  crash-report-collector:
+    container_name: crash-report-collector
+    image: crash-report-collector
+    restart: always
     build:
       context: .
       dockerfile: ./Dockerfile
     environment:
       - NODE_ENV=production
       - DATA_DIR=/data
-      - COLLECT_ONLY=1 # Change this to 0 for full CRS functionality
+      - COLLECT_ONLY=1
     volumes:
       - ./CRS_DATA:/data
     ports:
